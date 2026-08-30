@@ -227,6 +227,18 @@ p {
   margin-top: 1rem;
 }
 
+/* Inline links inside body copy */
+.section-content a {
+  color: #d2a85d;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(210, 168, 93, 0.4);
+}
+
+.section-content a:hover,
+.section-content a:focus-visible {
+  border-bottom-color: #d2a85d;
+}
+
 /* ================================
    Cards / Project Grid
    ================================ */
