@@ -353,6 +353,10 @@ p {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  /* Explicit dimensions avoid Firefox deriving width from the minimum height. */
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   aspect-ratio: 16 / 8;
   min-height: 15rem;
   overflow: hidden;
