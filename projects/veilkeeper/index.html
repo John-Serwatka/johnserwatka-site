@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A Veilkeeper engineering case study: shared human and AI combat execution, state management, and 20-match automated smoke testing. By John Serwatka."
+    />
+    <meta name="theme-color" content="#0f1115" />
+    <meta name="author" content="John Serwatka" />
+    <link
+      rel="canonical"
+      href="https://johnserwatka.com/projects/veilkeeper/"
+    />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="John Serwatka" />
+    <meta
+      property="og:title"
+      content="Veilkeeper: Shared Combat Architecture | John Serwatka"
+    />
+    <meta
+      property="og:description"
+      content="How human and AI controllers share combat rules in a C#/Godot tactical RPG, with complete-match smoke testing and an AI-assisted development workflow."
+    />
+    <meta
+      property="og:url"
+      content="https://johnserwatka.com/projects/veilkeeper/"
+    />
+    <meta
+      property="og:image"
+      content="https://johnserwatka.com/img/veilkeeper-isometric.jpg"
+    />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1080" />
+    <meta
+      property="og:image:alt"
+      content="Veilkeeper development-build gameplay showing an attack preview with damage and counter information."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Veilkeeper: Shared Combat Architecture | John Serwatka"
+    />
+    <meta
+      name="twitter:description"
+      content="Shared human and AI combat execution, complete-match smoke tests, and an AI-assisted development workflow."
+    />
+    <meta
+      name="twitter:image"
+      content="https://johnserwatka.com/img/veilkeeper-isometric.jpg"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Veilkeeper development-build gameplay showing an attack preview with damage and counter information."
+    />
+    <title>Veilkeeper: Shared Combat Architecture | John Serwatka</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header" id="top">
+      <div class="container header-inner">
+        <a href="/" class="site-title"
+          >John Serwatka<span>Software · Systems · Support</span></a
+        >
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="/#projects">Projects</a>
+          <a href="/#focus">Capabilities</a>
+          <a href="/#about">Experience</a>
+          <a href="/#contact">Contact</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <section class="hero case-hero" aria-labelledby="case-heading">
+        <div class="container">
+          <a class="back-link" href="/#projects">← Back to selected work</a>
+          <p class="section-label">Veilkeeper · Architecture case study</p>
+          <h1 id="case-heading">
+            One combat execution path. Human and AI controllers.
+          </h1>
+          <p class="case-intro">
+            Separating action selection from combat execution lets different
+            controllers use consistent gameplay rules—and makes complete matches
+            available to automated smoke testing.
+          </p>
+          <section
+            class="engineering-outcome"
+            aria-labelledby="engineering-outcome-heading"
+          >
+            <h2 id="engineering-outcome-heading">Engineering outcome</h2>
+            <p>
+              Human and AI actions share validation and execution rules,
+              enabling automated full-match testing through the real combat
+              scene. The CI smoke check runs 20 matches. The accepted trade-offs
+              are an input bridge tied to the state machine and careful
+              asynchronous sequencing; manual playtesting still covers
+              interaction and presentation.
+            </p>
+          </section>
+          <dl class="case-facts">
+            <div>
+              <dt>Project</dt>
+              <dd>Playable tactical RPG alpha<br />PocketLore Studios</dd>
+            </div>
+            <div>
+              <dt>My responsibilities</dt>
+              <dd>
+                Requirements, architecture, review, and validation; extensive
+                AI-assisted implementation
+              </dd>
+            </div>
+            <div>
+              <dt>Technology &amp; validation</dt>
+              <dd>
+                C# / Godot 4 · gdUnit4<br />20 AI-versus-AI matches in the CI
+                smoke check
+              </dd>
+            </div>
+          </dl>
+          <div class="hero-actions">
+            <a
+              class="button button-primary"
+              href="https://pocketlore-studios.itch.io/veilkeeper"
+              >Play alpha on itch.io <span aria-hidden="true">↗</span></a
+            ><a
+              class="button button-secondary"
+              href="/files/John_Serwatka_Resume.pdf"
+              download
+              >Download Resume <span class="button-meta">PDF</span></a
+            >
+          </div>
+          <p class="card-note">
+            Public alpha downloads are on itch.io. Steam builds are currently
+            limited to internal testers.
+          </p>
+        </div>
+      </section>
+
+      <div class="section section-alt">
+        <div class="container case-layout">
+          <nav class="case-toc" aria-label="Case study contents">
+            <p class="section-label">In this case study</p>
+            <ol>
+              <li><a href="#problem">Problem &amp; requirements</a></li>
+              <li><a href="#approaches">Architectural approaches</a></li>
+              <li><a href="#decision">Decision &amp; trade-offs</a></li>
+              <li>
+                <a href="#implementation">Implementation &amp; my role</a>
+              </li>
+              <li><a href="#testing">Automated match testing</a></li>
+              <li><a href="#outcomes">Benefits &amp; limitations</a></li>
+              <li><a href="#lessons">Lessons learned</a></li>
+            </ol>
+          </nav>
+
+          <article
+            class="case-body"
+            aria-label="Shared combat architecture case study"
+          >
+            <section id="problem" class="case-section">
+              <h2>1. Problem and requirements</h2>
+              <p>
+                Veilkeeper needs both a person and an AI to drive turn-based
+                combat. If each controller implements its own movement, attack,
+                and turn-ending rules, fixes can reach one path while leaving
+                the other inconsistent. Automated tests can then exercise
+                behavior that differs from the playable game.
+              </p>
+              <p>
+                The requirement was to vary how an action is chosen while
+                keeping its validation and execution consistent. Combat also
+                needs to handle asynchronous input, movement and attack
+                sequences, unit death, and victory or defeat without leaving the
+                state machine waiting indefinitely.
+              </p>
+              <ul>
+                <li>
+                  Keep combat state and board mutation under shared ownership.
+                </li>
+                <li>
+                  Allow either side to be AI-controlled without duplicating
+                  gameplay rules.
+                </li>
+                <li>
+                  Use the real combat scene for unattended, complete-match smoke
+                  tests.
+                </li>
+              </ul>
+            </section>
+
+            <section id="approaches" class="case-section">
+              <h2>2. Competing architectural approaches</h2>
+              <p>
+                Three approaches illustrate the design trade-offs. This
+                comparison describes the architecture's alternatives; it does
+                not imply each was separately prototyped.
+              </p>
+              <table class="comparison">
+                <caption>
+                  Where to put combat execution rules
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Approach</th>
+                    <th scope="col">Trade-off</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Separate human and AI execution</th>
+                    <td>
+                      Direct to implement initially, but duplicates validation
+                      and creates opportunities for rules to diverge.
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Controllers mutate the board directly</th>
+                    <td>
+                      Gives controllers flexibility, but allows them to bypass
+                      the state machine's action and transition rules.
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Shared execution, separate decisions</th>
+                    <td>
+                      Centralizes the rules, but requires a controller
+                      interface, an input bridge, and careful sequencing of
+                      asynchronous actions.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section id="decision" class="case-section">
+              <h2>3. Decision and trade-offs</h2>
+              <p>
+                The implemented design separates action selection from
+                execution. Each side has an <code>ICombatController</code>. A
+                human supplies decisions through input and menus; an AI produces
+                intents that are translated into the same state-machine input
+                verbs. Combat states validate actions, and
+                <code>CombatManager</code> owns board mutation.
+              </p>
+              <figure
+                class="architecture-flow"
+                role="img"
+                aria-labelledby="architecture-caption"
+                aria-describedby="architecture-description"
+              >
+                <div class="architecture-visual" aria-hidden="true">
+                  <div class="controller-options">
+                    <span class="flow-box"
+                      ><strong>Human controller</strong
+                      ><span>Player input &amp; menus</span></span
+                    >
+                    <span class="flow-box"
+                      ><strong>AI controller</strong
+                      ><span>Intents via input bridge</span></span
+                    >
+                  </div>
+                  <svg
+                    class="convergence-lines"
+                    viewBox="0 0 100 24"
+                    preserveAspectRatio="none"
+                    focusable="false"
+                  >
+                    <path
+                      d="M25 0V12H75V0 M50 12V24"
+                      vector-effect="non-scaling-stroke"
+                    />
+                  </svg>
+                  <span class="flow-box"
+                    ><strong>Shared combat execution</strong
+                    ><span
+                      >Combat states · Validation &amp; sequencing</span
+                    ></span
+                  >
+                  <span class="flow-arrow">↓</span>
+                  <span class="flow-box"
+                    ><strong>CombatManager</strong
+                    ><span>Board mutation &amp; resolution</span></span
+                  >
+                </div>
+                <p id="architecture-description" class="visually-hidden">
+                  The human controller receives player input and menu choices.
+                  The AI controller sends intents through an input bridge. Both
+                  converge on the same combat states for validation and
+                  sequencing, then CombatManager applies board changes and
+                  resolves combat.
+                </p>
+                <figcaption id="architecture-caption">
+                  Human and AI controllers converge on one shared combat
+                  execution path.
+                </figcaption>
+              </figure>
+              <p>
+                The cost is coordination. An AI must wait for movement or an
+                attack sequence to settle before sending the next intent. The
+                bridge also depends on the input vocabulary of the states, so
+                changes to interaction flow need review in both human and AI
+                paths.
+              </p>
+            </section>
+
+            <section id="implementation" class="case-section">
+              <h2>4. Implementation and responsibilities</h2>
+              <p>
+                <code>HumanController</code> participates in the common
+                interface while the active state waits for input.
+                <code>AIController</code> reads a board view, asks a decision
+                strategy for a plan, and passes intents to
+                <code>ControllerInputBridge</code>. The bridge invokes the live
+                state's movement, attack, and wait actions instead of applying
+                combat results itself.
+              </p>
+              <p>
+                States own activation flow. Movement and attack intents await
+                the corresponding state's settled signal; guards stop further AI
+                input if combat has ended, the acting unit has died, or its
+                activation has finished. This matters when a counterattack kills
+                the attacker before its planned turn is complete.
+              </p>
+              <div class="case-callout">
+                <p>
+                  I use AI extensively during implementation. My active
+                  responsibilities include defining requirements, making
+                  architecture decisions, reviewing proposed changes,
+                  investigating behavior, and validating results. This project
+                  reflects that workflow; it should not be read as a claim that
+                  I manually authored every line.
+                </p>
+              </div>
+              <p>
+                The same delivery responsibilities extend beyond architecture:
+                the public alpha was shown at PlayNYC, and subsequent player
+                feedback informed readability and UI improvements. See the
+                <a
+                  href="https://pocketlore-studios.itch.io/veilkeeper/devlog/1642081/playnyc-feedback-update"
+                  >published PlayNYC feedback update</a
+                >.
+              </p>
+            </section>
+
+            <section id="testing" class="case-section">
+              <h2>5. Automated AI-versus-AI testing</h2>
+              <p>
+                With AI controllers on both sides, the smoke harness can play
+                complete matches through the real
+                <code>CombatScene</code> bootstrap. The CI smoke check runs 20
+                simulations, rotating the authored demo encounters, and checks
+                that every fight reaches a valid victory or defeat within its
+                timeout.
+              </p>
+              <ul>
+                <li>
+                  Reset session state between matches and isolate late callbacks
+                  using a per-run identifier.
+                </li>
+                <li>
+                  Report timeout, invalid outcome, and bootstrap failures
+                  distinctly.
+                </li>
+                <li>
+                  Expose the result through a pass/fail sentinel and process
+                  exit status for CI.
+                </li>
+              </ul>
+              <figure
+                class="smoke-example"
+                aria-labelledby="smoke-example-caption"
+              >
+                <figcaption id="smoke-example-caption">
+                  20-match smoke check · Actual output
+                </figcaption>
+                <p class="card-note">
+                  From a saved local run of the CI smoke check on October 12,
+                  2026. Logging prefixes are omitted; this is not a hosted
+                  CI-run claim or a balance benchmark.
+                </p>
+                <pre
+                  class="smoke-output"
+                ><code>Smoke summary: 20 fight(s) - 7 victories, 13 defeats, 0 timeouts, 0 invalid outcomes, 0 bootstrap errors. Durations: min 0.26s / avg 0.37s / max 0.54s.
+SMOKE PASSED: every fight terminated with a winner.</code></pre>
+              </figure>
+              <p>
+                The harness targets failures such as non-termination and stalled
+                activations. Project testing notes also document a
+                counterattack-death freeze found using generated encounters,
+                illustrating why varying encounter coverage matters beyond
+                repeating the demo rotation.
+              </p>
+              <div class="case-callout">
+                <p>
+                  Twenty completed simulations are a smoke check for those runs.
+                  They do not prove game balance, comprehensive correctness, or
+                  coverage of every roster and state transition. Fast simulation
+                  also skips presentation timing, so a passing run cannot
+                  validate animation pacing or input feel.
+                </p>
+              </div>
+            </section>
+
+            <section id="outcomes" class="case-section">
+              <h2>6. Observed benefits and limitations</h2>
+              <p>
+                The implementation gives both decision sources a common path for
+                movement, attacks, and activation completion. Full-match
+                automation exercises that path without a person playing each
+                fight. Decision strategies can change while the execution rules
+                stay in the shared combat layer.
+              </p>
+              <p>
+                This is a structural benefit, not a measured claim about
+                development speed or defect reduction. Shared code can still
+                contain shared bugs. Repeating the same deterministic encounter
+                adds little new coverage, and an AI-driven test does not
+                reproduce a human exploring menus, cancelling actions, or using
+                a controller.
+              </p>
+              <p>
+                Focused automated tests and manual playtesting remain necessary.
+                Network control is a possible extension of the interface, not a
+                shipped capability claimed by this case study.
+              </p>
+            </section>
+
+            <section id="lessons" class="case-section">
+              <h2>7. Lessons learned</h2>
+              <ul>
+                <li>
+                  Make the validation boundary explicit: a controller chooses an
+                  action; shared gameplay code decides whether and how it
+                  happens.
+                </li>
+                <li>
+                  Treat asynchronous completion and terminal-state guards as
+                  part of the contract, particularly when an actor can die
+                  during its own action.
+                </li>
+                <li>
+                  Design test results around a specific question. Here, “did
+                  every fight terminate?” is useful and narrower than “is combat
+                  correct?”
+                </li>
+                <li>
+                  Use player feedback for questions automation cannot answer,
+                  including readability, navigation, and feel.
+                </li>
+                <li>
+                  In an AI-assisted workflow, clear requirements, critical
+                  review, and independent validation remain active engineering
+                  responsibilities.
+                </li>
+              </ul>
+            </section>
+
+            <section
+              class="case-section source-list"
+              aria-labelledby="sources-heading"
+            >
+              <h2 id="sources-heading">Evidence and further reading</h2>
+              <p>
+                Engineering details were checked against the project's
+                controller interfaces, input bridge, combat smoke harness, CI
+                workflow, and architecture and testing notes on October 19,
+                2026. The game source is private; the public GitHub repository
+                is a project overview.
+              </p>
+              <ul>
+                <li>
+                  <a href="https://github.com/PocketLore-Studios/Veilkeeper"
+                    >Veilkeeper public project overview</a
+                  >
+                </li>
+                <li>
+                  <a href="https://pocketlore-studios.itch.io/veilkeeper"
+                    >Playable alpha and development log</a
+                  >
+                </li>
+                <li>
+                  <a href="https://veilkeepergame.com/"
+                    >Game site and actual alpha screenshots</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="https://pocketlore-studios.itch.io/veilkeeper/devlog/1642081/playnyc-feedback-update"
+                    >Player feedback following PlayNYC</a
+                  >
+                </li>
+              </ul>
+            </section>
+          </article>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container contact-grid">
+        <div>
+          <p class="section-label">Get in touch</p>
+          <h2>Want to discuss the work?</h2>
+          <p class="availability">Open to remote technical opportunities</p>
+        </div>
+        <div class="contact-actions">
+          <a class="button button-primary" href="mailto:john@johnserwatka.com"
+            >Email John <span aria-hidden="true">↗</span></a
+          ><a class="button button-secondary" href="/#projects"
+            >More projects <span aria-hidden="true">→</span></a
+          >
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
